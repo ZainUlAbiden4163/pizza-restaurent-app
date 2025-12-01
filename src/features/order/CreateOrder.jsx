@@ -3,13 +3,13 @@ import { Form, redirect, useActionData, useNavigation } from "react-router-dom";
 import { createOrder } from "../services/apiRestaurant";
 import Button from "../ui/Button";
 
-import { getUser } from "../user/userSlice";
+import { fetchLocation } from "../user/userSlice";
 
 import EmptyCart from "../cart/EmptyCart";
 
 import store from "../../store";
 import { clearCart, getCart, getCartPizzaPrice } from "../cart/cartSlice";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { formatCurrency } from "../utils/helpers";
 
 // https://uibakery.io/regex-library/phone-number
@@ -20,8 +20,13 @@ const isValidPhone = (str) =>
 
 function CreateOrder() {
   const [withPriority, setWithPriority] = useState(false);
-  const user = useSelector(getUser);
-  useState();
+  const { username, status, address, position, error } = useSelector(
+    (state) => state.user,
+  );
+
+  const isLoading = address === "loading";
+
+  const dispatch = useDispatch();
 
   const formError = useActionData();
 
@@ -51,7 +56,7 @@ function CreateOrder() {
             required
             placeholder="John Cramer"
             className="input grow "
-            defaultValue={user}
+            defaultValue={username}
           />
         </div>
 
@@ -82,8 +87,27 @@ function CreateOrder() {
               required
               placeholder="Street # 1 house # 1 sector , islamabad"
               className="input w-full"
+              defaultValue={address}
+              disabled={isLoading}
             />
+            {status === "error" && (
+              <p className="text-xs mt-2 text-red-700 p-2 bg-red-200 text-center rounded-full">
+                {error}
+              </p>
+            )}
           </div>
+          {!position.latitude && !position.longitude && (
+            <Button
+              type="small"
+              onClick={(e) => {
+                e.preventDefault();
+                dispatch(fetchLocation());
+              }}
+              disabled={isLoading}
+            >
+              Get Position
+            </Button>
+          )}
         </div>
 
         <div className="mb-12 flex items-center gap-5">
@@ -102,6 +126,16 @@ function CreateOrder() {
 
         <div>
           <input type="hidden" value={JSON.stringify(cart)} name="cart" />
+          <input
+            type="hidden"
+            value={
+              position.latitude && position.longitude
+                ? `${position.latitude},${position.longitude} `
+                : ""
+            }
+            name="cart"
+          />
+
           <Button type="primary" disabled={isSubmitting}>
             {isSubmitting
               ? "Placing Order"
